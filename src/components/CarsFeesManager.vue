@@ -109,7 +109,7 @@
                                 <td class="font-weight-bold">السعة الفعلية:</td>
                                 <td>{{ input.actualCapacity || 'غير منطبق' }}</td>
                             </tr>
-                            <tr>
+                            <!-- <tr>
                                 <td class="font-weight-bold">حالة الاتفاقية:</td>
                                 <td>
                                     <v-chip :color="confirmDialog.data?.meta?.isEqual ? 'warning' : 'success'"
@@ -117,7 +117,7 @@
                                         {{ confirmDialog.data?.meta?.agreementStatusText }}
                                     </v-chip>
                                 </td>
-                            </tr>
+                            </tr> -->
 <template v-if="!confirmDialog.data?.meta?.isEqual">
       <tr class="bg-grey-lighten-4">
         <td class="text-primary font-weight-bold">معامل الفئة الأساسية (اتفاقية):</td>
@@ -181,7 +181,7 @@ const input = ref({
     model: null,
     engineType: null,
     rangeObj: null,
-    actualCapacity: null,
+    actualCapacity: 0,
     year: new Date().getFullYear(),
     depositNoAg: null,
     depositAg: null,
@@ -209,35 +209,49 @@ const onEngineTypeChange = () => {
     input.value.actualCapacity = null;
 };
 
-// 3. هل المحرك كهربائي؟ (لتخطي التحقق)
+// 3. هل المحرك كهربائي؟ (تعديل لضمان الدقة)
 const isElectric = computed(() => {
-    return input.value.engineType === 'محرك كهربائي';
+  // نتحقق من نوع المحرك
+  const isElectricType = input.value.engineType === 'محرك كهربائي';
+  
+  // نتحقق أيضاً إذا كانت الشريحة المختارة حدودها صفر (أمان إضافي لحالات E-POWER)
+  const isZeroCapacityRange = input.value.rangeObj && input.value.rangeObj.min === 0 && input.value.rangeObj.max === 0;
+
+  return isElectricType || isZeroCapacityRange;
 });
 
-// 4. قواعد التحقق للسعة الفعلية (Requirement 2)
-const actualCapacityRules = [
-    v => {
-        // إذا كان كهربائي، لا نشترط القيمة
-        if (isElectric.value) return true;
-        // مطلوب
-        if (!v) return 'مطلوب';
-        // رقم صحيح
-        if (!Number.isInteger(Number(v))) return 'رقم صحيح فقط';
 
-        // التحقق من النطاق
-        if (input.value.rangeObj) {
-            const min = input.value.rangeObj.min;
-            const max = input.value.rangeObj.max;
-            const val = Number(v);
-
-            if (val < min || val > max) {
-                return `القيمة يجب أن تكون بين ${min} و ${max} بناءً على الشريحة المختارة`;
-            }
-        }
+// 4. قواعد التحقق للسعة الفعلية (تم تحويلها لـ computed لحل مشكلة التحديث)
+const actualCapacityRules = computed(() => [
+  v => {
+    // 1. إذا كان كهربائي أو الشريحة لا تتطلب سعة (0-0) -> الحقل سليم دائماً
+    if (isElectric.value) return true;
+    
+    // فحص إضافي أمان للشريحة الصفرية
+    if (input.value.rangeObj && input.value.rangeObj.min === 0 && input.value.rangeObj.max === 0) {
         return true;
     }
-];
 
+    // 2. التحقق من وجود قيمة (لغير الكهربائي)
+    if (v === null || v === undefined || v === '') return 'مطلوب';
+
+    // 3. التحقق من أنه رقم صحيح
+    if (!Number.isInteger(Number(v))) return 'رقم صحيح فقط';
+
+    // 4. التحقق من النطاق (Min/Max)
+    if (input.value.rangeObj) {
+      const min = input.value.rangeObj.min;
+      const max = input.value.rangeObj.max;
+      const val = Number(v);
+
+      if (val < min || val > max) {
+        return `القيمة يجب أن تكون بين ${min} و ${max}`;
+      }
+    }
+    
+    return true;
+  }
+]);
 const onMakeChange = () => {
     input.value.model = null;
 };
@@ -309,6 +323,8 @@ const confirmAndAdd = () => {
         store.addRecord(pendingRecord);
         confirmDialog.value.show = false;
         showMsg('تمت الإضافة', 'success');
+        // 3. إعادة تعيين الفورم (هذا هو السطر المطلوب)
+        resetForm();
     }
 };
 

@@ -43,7 +43,7 @@ export function calculateFees(inputs) {
   const isEqual = valAg === valNoAg;
   
   // نص الحالة للعرض في الجدول والرسالة
-  const agreementStatusText = isEqual ? "ليس لها وديعة اتفاقية" : "لها وديعة اتفاقية";
+  const agreementStatusText = isEqual ? "السيارة لاتطبق اتفاقية" : "السيارة تطبق اتفاقية";
 
   // ---------------------------------------------------------
   // 3. الحسابات الأولية (قبل خصم سعة المحرك)

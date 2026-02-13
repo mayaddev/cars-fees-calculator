@@ -12,10 +12,14 @@ export const useCarStore = defineStore('carStore', () => {
       ...record
     });
   }
+  // دالة الحذف (هذه هي التي كانت ناقصة وتسبب الخطأ)
+  function removeRecord(id) {
+    records.value = records.value.filter(r => r.id !== id);
+  }
 
   function clearRecords() {
     records.value = [];
   }
 
-  return { records, addRecord, clearRecords };
+  return { records, addRecord, clearRecords,removeRecord };
 });

@@ -118,24 +118,28 @@
                                     </v-chip>
                                 </td>
                             </tr> -->
-<template v-if="!confirmDialog.data?.meta?.isEqual">
-      <tr class="bg-grey-lighten-4">
-        <td class="text-primary font-weight-bold">معامل الفئة الأساسية (اتفاقية):</td>
-        <td class="text-primary">
-          {{ confirmDialog.data?.meta?.agreementCalcDescription?.basicFactor }}
-        </td>
-      </tr>
-      <tr class="bg-grey-lighten-4">
-        <td class="text-primary font-weight-bold">معامل الفئة المتوسطة (اتفاقية):</td>
-        <td class="text-primary">
-          {{ confirmDialog.data?.meta?.agreementCalcDescription?.interFactor }}
-        </td>
-      </tr>
-    </template>
+                            <template v-if="!confirmDialog.data?.meta?.isEqual">
+                                <tr class="bg-grey-lighten-4">
+                                    <td class="text-primary font-weight-bold">معامل الفئة الأساسية (اتفاقية):</td>
+                                    <td class="text-primary">
+                                        {{ confirmDialog.data?.meta?.agreementCalcDescription?.basicFactor }}
+                                    </td>
+                                </tr>
+                                <tr class="bg-grey-lighten-4">
+                                    <td class="text-primary font-weight-bold">معامل الفئة المتوسطة (اتفاقية):</td>
+                                    <td class="text-primary">
+                                        {{ confirmDialog.data?.meta?.agreementCalcDescription?.interFactor }}
+                                    </td>
+                                </tr>
+                            </template>
                         </tbody>
                     </v-table>
-                    <v-alert v-if="confirmDialog.warning" type="warning" class="mt-4" variant="outlined">
+                    <!-- <v-alert v-if="confirmDialog.warning" type="error" class="mt-4" variant="flat">
                         تنبيه: الودائع النهائية للتطبيق أعلى من عدم التطبيق.
+                    </v-alert> -->
+                    <v-alert v-if="confirmDialog.warning" type="error" class="mt-4 flash-alert font-weight-bold"
+                        variant="elevated" icon="mdi-alert-decagram" prominent>
+                        تنبيه هام: الودائع النهائية في حالة "تطبيق الاتفاقية" أعلى من "عدم التطبيق"!
                     </v-alert>
                 </v-card-text>
                 <v-card-actions>
@@ -211,46 +215,46 @@ const onEngineTypeChange = () => {
 
 // 3. هل المحرك كهربائي؟ (تعديل لضمان الدقة)
 const isElectric = computed(() => {
-  // نتحقق من نوع المحرك
-  const isElectricType = input.value.engineType === 'محرك كهربائي';
-  
-  // نتحقق أيضاً إذا كانت الشريحة المختارة حدودها صفر (أمان إضافي لحالات E-POWER)
-  const isZeroCapacityRange = input.value.rangeObj && input.value.rangeObj.min === 0 && input.value.rangeObj.max === 0;
+    // نتحقق من نوع المحرك
+    const isElectricType = input.value.engineType === 'محرك كهربائي';
 
-  return isElectricType || isZeroCapacityRange;
+    // نتحقق أيضاً إذا كانت الشريحة المختارة حدودها صفر (أمان إضافي لحالات E-POWER)
+    const isZeroCapacityRange = input.value.rangeObj && input.value.rangeObj.min === 0 && input.value.rangeObj.max === 0;
+
+    return isElectricType || isZeroCapacityRange;
 });
 
 
 // 4. قواعد التحقق للسعة الفعلية (تم تحويلها لـ computed لحل مشكلة التحديث)
 const actualCapacityRules = computed(() => [
-  v => {
-    // 1. إذا كان كهربائي أو الشريحة لا تتطلب سعة (0-0) -> الحقل سليم دائماً
-    if (isElectric.value) return true;
-    
-    // فحص إضافي أمان للشريحة الصفرية
-    if (input.value.rangeObj && input.value.rangeObj.min === 0 && input.value.rangeObj.max === 0) {
+    v => {
+        // 1. إذا كان كهربائي أو الشريحة لا تتطلب سعة (0-0) -> الحقل سليم دائماً
+        if (isElectric.value) return true;
+
+        // فحص إضافي أمان للشريحة الصفرية
+        if (input.value.rangeObj && input.value.rangeObj.min === 0 && input.value.rangeObj.max === 0) {
+            return true;
+        }
+
+        // 2. التحقق من وجود قيمة (لغير الكهربائي)
+        if (v === null || v === undefined || v === '') return 'مطلوب';
+
+        // 3. التحقق من أنه رقم صحيح
+        if (!Number.isInteger(Number(v))) return 'رقم صحيح فقط';
+
+        // 4. التحقق من النطاق (Min/Max)
+        if (input.value.rangeObj) {
+            const min = input.value.rangeObj.min;
+            const max = input.value.rangeObj.max;
+            const val = Number(v);
+
+            if (val < min || val > max) {
+                return `القيمة يجب أن تكون بين ${min} و ${max}`;
+            }
+        }
+
         return true;
     }
-
-    // 2. التحقق من وجود قيمة (لغير الكهربائي)
-    if (v === null || v === undefined || v === '') return 'مطلوب';
-
-    // 3. التحقق من أنه رقم صحيح
-    if (!Number.isInteger(Number(v))) return 'رقم صحيح فقط';
-
-    // 4. التحقق من النطاق (Min/Max)
-    if (input.value.rangeObj) {
-      const min = input.value.rangeObj.min;
-      const max = input.value.rangeObj.max;
-      const val = Number(v);
-
-      if (val < min || val > max) {
-        return `القيمة يجب أن تكون بين ${min} و ${max}`;
-      }
-    }
-    
-    return true;
-  }
 ]);
 const onMakeChange = () => {
     input.value.model = null;
@@ -289,7 +293,13 @@ const handleCalculationRequest = async () => {
         showMsg('خطأ: قيمة الوديعة بدون تطبيق لا يمكن أن تكون أقل من التطبيق.', 'error');
         return;
     }
-
+// ----------------------------------------------------------------
+    // 3. (جديد) تحقق خاص بالسيارات الكهربائية: يجب تساوي القيمتين
+    // ----------------------------------------------------------------
+    if (isElectric.value && noAgVal !== agVal) {
+        showMsg('تنبيه: في السيارات الكهربائية، يجب أن تتساوى قيمة الوديعة في الحالتين (تطبيق وعدم تطبيق).', 'error');
+        return; // إيقاف العملية
+    }
     const results = calculateFees({
         depositNoAgreement: noAgVal,
         depositAgreement: agVal,
@@ -400,3 +410,35 @@ const exportToExcel = () => {
     XLSX.writeFile(workbook, fileName);
 };
 </script>
+
+<style scoped>
+/* تعريف الأنيميشن */
+@keyframes critical-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+    transform: scale(1);
+  }
+  50% {
+    /* تكبير بسيط مع توهج */
+    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(255, 0, 0, 1);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+    transform: scale(1);
+  }
+}
+
+/* تطبيق الكلاس على التنبيه */
+.flash-alert {
+  /* تكرار الأنيميشن كل ثانية ونصف */
+  animation: critical-pulse 1.5s infinite;
+  
+  /* حدود حمراء فاقعة */
+  border: 2px solid #ff5252;
+  
+  /* لون خلفية قوي */
+  background-color: #d32f2f !important;
+  color: white !important;
+}
+</style>
